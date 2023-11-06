@@ -28,6 +28,10 @@ func GetEnabledExporters(_ logr.Logger, config map[interface{}]interface{}) map[
 	return getEnabledComponents(config, "exporters")
 }
 
+func GetEnabledProcessors(_ logr.Logger, config map[interface{}]interface{}) map[interface{}]bool {
+	return getEnabledComponents(config, "processors")
+}
+
 func getEnabledComponents(config map[interface{}]interface{}, componentType string) map[interface{}]bool {
 	cfgComponents, ok := config[componentType]
 	if !ok {
