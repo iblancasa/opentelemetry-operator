@@ -174,6 +174,7 @@ undeploy: set-image-controller
 release-artifacts: set-image-controller
 	mkdir -p dist
 	$(KUSTOMIZE) build config/default -o dist/opentelemetry-operator.yaml
+	$(KUSTOMIZE) build config/overlays/openshift -o dist/opentelemetry-operator-openshift.yaml
 
 # Generate manifests e.g. CRD, RBAC etc.
 .PHONY: manifests
