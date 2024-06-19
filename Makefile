@@ -496,7 +496,7 @@ MIN_OPENSHIFT_VERSION ?= 4.12
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: generate-bundle
-generate-bundle: kustomize operator-sdk manifests set-image-controller #api-docs
+generate-bundle: kustomize operator-sdk manifests set-image-controller api-docs
 	sed -i 's/minKubeVersion: .*/minKubeVersion: $(MIN_KUBERNETES_VERSION)/' config/manifests/$(BUNDLE_VARIANT)/bases/opentelemetry-operator.clusterserviceversion.yaml
 
 	$(OPERATOR_SDK) generate kustomize manifests -q --input-dir $(MANIFESTS_DIR) --output-dir $(MANIFESTS_DIR)
@@ -514,14 +514,25 @@ bundle:
 	BUNDLE_VARIANT=community $(MAKE) generate-bundle
 	BUNDLE_VARIANT=openshift $(MAKE) generate-bundle
 
+
 .PHONY: reset
 reset: kustomize operator-sdk manifests
 	$(MAKE) VERSION=${OPERATOR_VERSION} set-image-controller
-	$(OPERATOR_SDK)  generate kustomize manifests -q
-	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version ${OPERATOR_VERSION} $(BUNDLE_METADATA_OPTS)
-	$(OPERATOR_SDK) bundle validate ./bundle
-	./hack/ignore-createdAt-bundle.sh
+	$(OPERATOR_SDK)  generate kustomize manifests -q --input-dir config/manifests/community --output-dir config/manifests/community
+	$(OPERATOR_SDK)  generate kustomize manifests -q --input-dir config/manifests/openshift --output-dir config/manifests/openshift
+
+	$(KUSTOMIZE) build config/manifests/community | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS) --kustomize-dir config/manifests/community --output-dir bundle/community
+	$(KUSTOMIZE) build config/manifests/openshift |$(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS) --kustomize-dir config/manifests/openshift --output-dir bundle/openshift
+
+	# Workaround for https://github.com/operator-framework/operator-sdk/issues/4992
+	echo -e "\n  com.redhat.openshift.versions: v$(MIN_OPENSHIFT_VERSION)" >> bundle/community/metadata/annotations.yaml
+	echo -e "\n  com.redhat.openshift.versions: v$(MIN_OPENSHIFT_VERSION)" >> bundle/openshift/metadata/annotations.yaml
+
+	$(OPERATOR_SDK) bundle validate ./bundle/community
+	$(OPERATOR_SDK) bundle validate ./bundle/openshift
+	rm bundle.Dockerfile
 	git checkout config/manager/kustomization.yaml
+	./hack/ignore-createdAt-bundle.sh
 
 # Build the bundle image, used only for local dev purposes
 .PHONY: bundle-build
