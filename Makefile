@@ -512,6 +512,7 @@ generate-bundle: kustomize operator-sdk manifests set-image-controller #api-docs
 .PHONY: bundle
 bundle:
 	BUNDLE_VARIANT=community $(MAKE) generate-bundle
+	BUNDLE_VARIANT=openshift $(MAKE) generate-bundle
 
 .PHONY: reset
 reset: kustomize operator-sdk manifests
