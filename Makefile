@@ -35,19 +35,6 @@ TARGETALLOCATOR_IMG ?= ${IMG_PREFIX}/${TARGETALLOCATOR_IMG_REPO}:$(addprefix v,$
 OPERATOROPAMPBRIDGE_IMG_REPO ?= operator-opamp-bridge
 OPERATOROPAMPBRIDGE_IMG ?= ${IMG_PREFIX}/${OPERATOROPAMPBRIDGE_IMG_REPO}:$(addprefix v,${VERSION})
 
-# Options for 'bundle-build'
-ifneq ($(origin CHANNELS), undefined)
-BUNDLE_CHANNELS := --channels=$(CHANNELS)
-endif
-ifneq ($(origin DEFAULT_CHANNEL), undefined)
-BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
-endif
-BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
-
-MANIFEST_DIR ?= config/crd/bases
-# kubectl apply does not work on large CRDs.
-CRD_OPTIONS ?= "crd:generateEmbeddedObjectMeta=true,maxDescLen=0"
-
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -462,14 +449,69 @@ operator-sdk: $(LOCALBIN)
 	chmod +x $(OPERATOR_SDK) ;\
 	}
 
+# CHANNELS define the bundle channels used in the bundle.
+# Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
+# To re-generate a bundle for other specific channels without changing the standard setup, you can:
+# - use the CHANNELS as arg of the bundle target (e.g make bundle CHANNELS=candidate,fast,stable)
+# - use environment variables to overwrite this value (e.g export CHANNELS="candidate,fast,stable")
+ifneq ($(origin CHANNELS), undefined)
+BUNDLE_CHANNELS := --channels=$(CHANNELS)
+endif
+
+# DEFAULT_CHANNEL defines the default channel used in the bundle.
+# Add a new line here if you would like to change its default config. (E.g DEFAULT_CHANNEL = "stable")
+# To re-generate a bundle for any other default channel without changing the default setup, you can:
+# - use the DEFAULT_CHANNEL as arg of the bundle target (e.g make bundle DEFAULT_CHANNEL=stable)
+# - use environment variables to overwrite this value (e.g export DEFAULT_CHANNEL="stable")
+ifneq ($(origin DEFAULT_CHANNEL), undefined)
+BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
+endif
+BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
+
+# BUNDLE_GEN_FLAGS are the flags passed to the operator-sdk generate bundle command
+BUNDLE_GEN_FLAGS ?= -q --overwrite --version $(OPERATOR_VERSION) $(BUNDLE_METADATA_OPTS)
+
+# USE_IMAGE_DIGESTS defines if images are resolved via tags or digests
+# You can enable this value if you would like to use SHA Based Digests
+# To enable set flag to true
+USE_IMAGE_DIGESTS ?= false
+ifeq ($(USE_IMAGE_DIGESTS), true)
+	BUNDLE_GEN_FLAGS += --use-image-digests
+endif
+MANIFEST_DIR ?= config/crd/bases
+
+# kubectl apply does not work on large CRDs.
+CRD_OPTIONS ?= "crd:generateEmbeddedObjectMeta=true,maxDescLen=0"
+
+
+
+# Choose wich version to generate
+BUNDLE_VARIANT ?= community
+BUNDLE_DIR = ./bundle/$(BUNDLE_VARIANT)
+MANIFESTS_DIR = config/manifests/$(BUNDLE_VARIANT)
+BUNDLE_BUILD_GEN_FLAGS ?= $(BUNDLE_GEN_FLAGS) --output-dir . --kustomize-dir ../../$(MANIFESTS_DIR)
+
+MIN_KUBERNETES_VERSION ?= 1.25.0
+MIN_OPENSHIFT_VERSION ?= 4.12
+
 # Generate bundle manifests and metadata, then validate generated files.
+.PHONY: generate-bundle
+generate-bundle: kustomize operator-sdk manifests set-image-controller #api-docs
+	sed -i 's/minKubeVersion: .*/minKubeVersion: $(MIN_KUBERNETES_VERSION)/' config/manifests/$(BUNDLE_VARIANT)/bases/opentelemetry-operator.clusterserviceversion.yaml
+
+	$(OPERATOR_SDK) generate kustomize manifests -q --input-dir $(MANIFESTS_DIR) --output-dir $(MANIFESTS_DIR)
+	cd $(BUNDLE_DIR) && cp ../../PROJECT . && $(KUSTOMIZE) build ../../$(MANIFESTS_DIR) | $(OPERATOR_SDK) generate bundle $(BUNDLE_BUILD_GEN_FLAGS) && rm PROJECT
+
+	# Workaround for https://github.com/operator-framework/operator-sdk/issues/4992
+	echo -e "\nLABEL com.redhat.openshift.versions=v$(MIN_OPENSHIFT_VERSION)" >> bundle/$(BUNDLE_VARIANT)/bundle.Dockerfile
+	echo -e "\n  com.redhat.openshift.versions: v$(MIN_OPENSHIFT_VERSION)" >> bundle/$(BUNDLE_VARIANT)/metadata/annotations.yaml
+
+	$(OPERATOR_SDK) bundle validate $(BUNDLE_DIR)
+	#./hack/ignore-createdAt-bundle.sh
+
 .PHONY: bundle
-bundle: kustomize operator-sdk manifests set-image-controller api-docs
-	$(OPERATOR_SDK) generate kustomize manifests -q
-	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-	./hack/ignore-createdAt-bundle.sh
-	./hack/add-openshift-annotations.sh
-	$(OPERATOR_SDK) bundle validate ./bundle
+bundle:
+	BUNDLE_VARIANT=community $(MAKE) generate-bundle
 
 .PHONY: reset
 reset: kustomize operator-sdk manifests
