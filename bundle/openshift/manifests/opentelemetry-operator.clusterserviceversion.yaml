@@ -99,7 +99,7 @@ metadata:
     categories: Logging & Tracing,Monitoring
     certified: "false"
     containerImage: ghcr.io/open-telemetry/opentelemetry-operator/opentelemetry-operator
-    createdAt: "2024-06-19T13:19:05Z"
+    createdAt: "2024-06-19T13:30:53Z"
     description: Provides the OpenTelemetry components, including the Collector
     operators.operatorframework.io/builder: operator-sdk-v1.29.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -504,7 +504,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: spec.serviceAccountName
-                image: ghcr.io/open-telemetry/opentelemetry-operator/opentelemetry-operator:0.102.0-15-g0a486a27
+                image: ghcr.io/open-telemetry/opentelemetry-operator/opentelemetry-operator:0.102.0
                 livenessProbe:
                   httpGet:
                     path: /healthz

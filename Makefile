@@ -507,7 +507,7 @@ generate-bundle: kustomize operator-sdk manifests set-image-controller #api-docs
 	echo -e "\n  com.redhat.openshift.versions: v$(MIN_OPENSHIFT_VERSION)" >> bundle/$(BUNDLE_VARIANT)/metadata/annotations.yaml
 
 	$(OPERATOR_SDK) bundle validate $(BUNDLE_DIR)
-	#./hack/ignore-createdAt-bundle.sh
+	./hack/ignore-createdAt-bundle.sh
 
 .PHONY: bundle
 bundle:
@@ -521,7 +521,6 @@ reset: kustomize operator-sdk manifests
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version ${OPERATOR_VERSION} $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
 	./hack/ignore-createdAt-bundle.sh
-	./hack/add-openshift-annotations.sh
 	git checkout config/manager/kustomization.yaml
 
 # Build the bundle image, used only for local dev purposes
