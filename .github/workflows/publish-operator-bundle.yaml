@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - '.github/workflows/publish-operator-bundle.yaml'
-      - 'bundle.Dockerfile'
       - 'bundle/**'
     branches:
       - main
@@ -66,11 +65,11 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Operator image
+      - name: Build and push community bundle image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./bundle.Dockerfile
+          file: ./bundle/community/bundle.Dockerfile
           platforms: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.docker_meta.outputs.tags }}

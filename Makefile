@@ -276,7 +276,8 @@ prepare-e2e: chainsaw set-image-controller add-image-targetallocator add-image-o
 
 .PHONY: scorecard-tests
 scorecard-tests: operator-sdk
-	$(OPERATOR_SDK) scorecard -w=5m bundle || (echo "scorecard test failed" && exit 1)
+	$(OPERATOR_SDK) scorecard -w=5m bundle/community || (echo "scorecard test for community bundle failed" && exit 1)
+	$(OPERATOR_SDK) scorecard -w=5m bundle/openshift || (echo "scorecard test for openshift bundle failed" && exit 1)
 
 
 # Build the container image, used only for local dev purposes
