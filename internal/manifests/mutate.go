@@ -194,6 +194,10 @@ func mutateConfigMap(existing, desired *corev1.ConfigMap) {
 }
 
 func mutateServiceAccount(existing, desired *corev1.ServiceAccount) {
+	if v, ok := existing.Annotations["service.beta.openshift.io/inject-cabundle"]; ok {
+		desired.Annotations["service.beta.openshift.io/inject-cabundle"] = v
+	}
+
 	existing.Annotations = desired.Annotations
 	existing.Labels = desired.Labels
 }
