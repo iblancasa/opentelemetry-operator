@@ -23,8 +23,10 @@ import (
 type Builder[Params any] func(params Params) ([]client.Object, error)
 
 type ManifestFactory[T client.Object, Params any] func(params Params) (T, error)
+type ManifestSliceFactory[T ~[]client.Object, Params any] func(params Params) (T, error)
 type SimpleManifestFactory[T client.Object, Params any] func(params Params) T
 type K8sManifestFactory[Params any] ManifestFactory[client.Object, Params]
+type K8sManifestSliceFactory[Params any] ManifestSliceFactory[[]client.Object, Params]
 
 func FactoryWithoutError[T client.Object, Params any](f SimpleManifestFactory[T, Params]) K8sManifestFactory[Params] {
 	return func(params Params) (client.Object, error) {
@@ -34,6 +36,12 @@ func FactoryWithoutError[T client.Object, Params any](f SimpleManifestFactory[T,
 
 func Factory[T client.Object, Params any](f ManifestFactory[T, Params]) K8sManifestFactory[Params] {
 	return func(params Params) (client.Object, error) {
+		return f(params)
+	}
+}
+
+func FactorySlice[T []client.Object, Params any](f ManifestSliceFactory[T, Params]) K8sManifestSliceFactory[Params] {
+	return func(params Params) ([]client.Object, error) {
 		return f(params)
 	}
 }
