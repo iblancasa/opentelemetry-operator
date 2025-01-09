@@ -97,9 +97,19 @@ func Role(params manifests.Params) ([]client.Object, error) {
 		return nil, err
 	}
 
+	name := naming.Role(params.OtelCol.Name, params.OtelCol.Namespace)
+
+	labels := manifestutils.Labels(params.OtelCol.ObjectMeta, name, params.OtelCol.Spec.Image, ComponentOpenTelemetryCollector, params.Config.LabelsFilter())
+	annotations, err := manifestutils.Annotations(params.OtelCol, params.Config.AnnotationsFilter())
+	if err != nil {
+		return nil, err
+	}
+
 	// Convert []*rbacv1.Role to []client.Object
 	result := make([]client.Object, len(roles))
 	for i, role := range roles {
+		role.ObjectMeta.Labels = labels
+		role.ObjectMeta.Annotations = annotations
 		result[i] = role
 	}
 
@@ -114,20 +124,20 @@ func RoleBinding(params manifests.Params) ([]client.Object, error) {
 		return nil, nil
 	}
 
+	name := naming.RoleBinding(params.OtelCol.Name, params.OtelCol.Namespace)
+
+	labels := manifestutils.Labels(params.OtelCol.ObjectMeta, name, params.OtelCol.Spec.Image, ComponentOpenTelemetryCollector, params.Config.LabelsFilter())
 	annotations, err := manifestutils.Annotations(params.OtelCol, params.Config.AnnotationsFilter())
 	if err != nil {
 		return nil, err
 	}
 
-	for _, rb := range rbs {
-		rb.ObjectMeta.Labels = manifestutils.Labels(params.OtelCol.ObjectMeta, rb.ObjectMeta.Name, params.OtelCol.Spec.Image, ComponentOpenTelemetryCollector, params.Config.LabelsFilter())
-		rb.ObjectMeta.Annotations = annotations
-	}
-
 	// Convert []*rbacv1.RoleBinding to []client.Object
 	result := make([]client.Object, len(rbs))
-	for i, role := range rbs {
-		result[i] = role
+	for i, rb := range rbs {
+		rb.ObjectMeta.Labels = labels
+		rb.ObjectMeta.Annotations = annotations
+		result[i] = rb
 	}
 
 	return result, nil
